@@ -1,7 +1,17 @@
-﻿using System.Collections;
+﻿// Author: Jose A. Iglesias-Guitian jalley@cvc.uab.es
+// Date: September 2017
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+
+/* For now this script under development saves the output of both Octane Renderer and Unity Editor (just for debugging purposes)
+   Main idea: Unity waits until Octane Renderer is ready to dump a rendered frame, meanwhile Unity simulations are frozen using 
+   Time.timeScale = 0; Observed behavior: when increasing m_CaptureFramerate through UI, it can be observed that Octane output 
+   is smoothed.
+*/
+    // TO DO: The desired behavior would be to ensure the time duration of a certain captured sequence and ideally chosing how 
+    // many Octane frames per second we want.
 
 public class SaveOctaneFrameSequence : MonoBehaviour
 {
