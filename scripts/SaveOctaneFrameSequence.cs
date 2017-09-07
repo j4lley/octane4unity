@@ -1,4 +1,5 @@
-﻿// Author: Jose A. Iglesias-Guitian jalley@cvc.uab.es
+﻿// Authors: Fran Molero fmolero@cvc.uab.es
+//          Jose A. Iglesias-Guitian jalley@cvc.uab.es
 // Date: September 2017
 using System.Collections;
 using System.Collections.Generic;
@@ -10,34 +11,28 @@ using UnityEngine;
    Time.timeScale = 0; Observed behavior: when increasing m_CaptureFramerate through UI, it can be observed that Octane output 
    is smoothed.
 */
-    // TO DO: The desired behavior would be to ensure the time duration of a certain captured sequence and ideally chosing how 
-    // many Octane frames per second we want.
+// TO DO: The desired behavior would be to ensure the time duration of a certain captured sequence and ideally chosing how 
+// many Octane frames per second we want.
 
 public class SaveOctaneFrameSequence : MonoBehaviour
 {
+    public Octane.RenderPassId[] renderPass;
+    public Octane.ImageSaveType[] renderPassOutputType;
+
+    //public tOctaneCaptureLayers m_OctaneCaptureLayers;
+
     public int m_CaptureFramerate = 30;
     public int m_VSynchCount = 0;
     public uint m_MaxSamplesPerPixel = 0; // this will automatically take later its value from Octane Kernel configuration
     public bool m_CaptureOctane = true;
-    public bool m_CaptureUnity = true;
+    public bool m_CaptureUnity = false;
 
     private string mOctaneOutputDir;
     private string mUnityOutputDir;
     private bool   mCapturedFrame;
     private uint m_OctaneSavedFrames = 0;
 
-    private bool condition;
-    //private int frame;
-
-    public IEnumerator Run() {
-        yield return new WaitForSeconds(1f);
-        print("::::::::::::: Bomb exploded ::::::::::: !!!!");
-        UnityEditor.EditorApplication.isPlaying = false;
-        Debug.Log("Real Time (The real time in seconds since the game started): " + Time.realtimeSinceStartup);
-        Debug.Log("Fixed Time (This is the time in seconds since the start of the game): " + Time.fixedTime);
-        Debug.Log("Time: " + Time.time);
-        Application.Quit();
-    }
+    private uint mPreviousFrameOctaneSpp = 0;
 
     // Use this for initialization
     void Start()
@@ -48,43 +43,52 @@ public class SaveOctaneFrameSequence : MonoBehaviour
         mUnityOutputDir = Application.dataPath + "/../Output/Unity";        
         Directory.CreateDirectory(mUnityOutputDir);
 
-        m_OctaneSavedFrames = 0;
-        mCapturedFrame = false;
         m_MaxSamplesPerPixel = Octane.Renderer.GetLatestRenderStatistics().maxSamplesPerPixel;
         // Configure framerate specifications
         QualitySettings.vSyncCount = m_VSynchCount;
         Time.captureFramerate = m_CaptureFramerate;
+        Application.runInBackground = true;
         //Application.targetFrameRate = 10;        
-
-        // Tests
-        //StartCoroutine(Run());
-        //StartCoroutine(Example());
-        condition = false;
-        //frame = 0;
+        mPreviousFrameOctaneSpp = 0;
+        m_OctaneSavedFrames = 0;
+        mCapturedFrame = false;
+        //renderPass.Initialize();
+        renderPass = new Octane.RenderPassId[2];
+        renderPassOutputType = new Octane.ImageSaveType[2];
+        renderPass[0] = Octane.RenderPassId.RENDER_PASS_BEAUTY;
+        renderPass[1] = Octane.RenderPassId.RENDER_PASS_Z_DEPTH;
+        renderPassOutputType[0] = Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8;
+        renderPassOutputType[1] = Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG16;
+        Octane.Renderer.SetRenderPasses(renderPass);
     }
 
-    IEnumerator WaitForOctaneRender()
+    // Use this for initialization
+    bool JustFinishedOctaneFrame()
     {
-        while (!Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel.Equals(m_MaxSamplesPerPixel) /*&& Octane.Renderer.IsRendering*/ 
-            || !Octane.Renderer.GetLatestRenderStatistics().state.Equals(Octane.RenderState.RSTATE_FINISHED))
-        {
-            //print("Waiting for Octane to finish render ...");
-            mCapturedFrame = false;
-            Time.timeScale = 0;
-            Time.captureFramerate = -1;
-            yield return 0;
-        }
+        return (
+            (mCapturedFrame == false) && /* frame was not just written to disk before */
+            !Octane.Renderer.IsCompiling && /* Octane should not be currently compiling the current scene frame */
+            (mPreviousFrameOctaneSpp != Octane.Renderer.SampleCount) && /* we use this trick to avoid multiple images to be written with the same frame */
+            Octane.Renderer.SampleCount.Equals(Octane.Renderer.GetLatestRenderStatistics().maxSamplesPerPixel) /* ensure desired spp has been achieved */
+            );
+    }
 
-        if (!mCapturedFrame)
+    void Update()
+    {
+        if (m_CaptureOctane)
         {
-            if (m_CaptureOctane)
+            if (JustFinishedOctaneFrame())
             {
                 m_OctaneSavedFrames++;
-                string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
-                Octane.Renderer.SaveImage(Octane.RenderPassId.RENDER_PASS_BEAUTY,
-                                        mOctaneOutputDir + "/" + frame_str + "_" + Octane.Renderer.SampleCount + "spp",
-                                        Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8,
-                                        false/*synchronous*/);
+                //string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
+                for (int pass = 0; pass < renderPass.GetLength(0); pass++)
+                {
+                    string frame_str = string.Format("{0}/octane_fr{1:D04}_pass{2}_spp{3}.png", mOctaneOutputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
+                    Octane.Renderer.SaveImage(/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/renderPass[pass],
+                                          frame_str,
+                                          /*Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8*/ renderPassOutputType[1],
+                                          true/*asynchronous*/);
+                }
                 //Octane.Renderer.SaveImage(Octane.RenderPassId.RENDER_PASS_AMBIENT_OCCLUSION,
                 //                          mOctaneOutputDir + "/" + frame_str + "_AO_" + Octane.Renderer.SampleCount + "spp",
                 //                          Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG16,
@@ -94,37 +98,18 @@ public class SaveOctaneFrameSequence : MonoBehaviour
                 //                          Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG16,
                 //                          false/*synchronous*/);
                 print("Writing Octane image " + m_OctaneSavedFrames + " rendered with " + Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel + "spp.");
+                Time.captureFramerate = m_CaptureFramerate;
+                Time.timeScale = 1;
+                mCapturedFrame = true;
             }
-            mCapturedFrame = true;
-            Time.captureFramerate = m_CaptureFramerate;
-            Time.timeScale = 1;
+            else
+            {
+                Time.timeScale = 0;
+                mCapturedFrame = false;
+            }
+            mPreviousFrameOctaneSpp = Octane.Renderer.SampleCount;
         }
-    }
 
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    // EXAMPLE TEST
-    /////////////////////////////////////////////////////////////////////////////////////////////
-    IEnumerator Example()
-    {
-        Debug.Log("Waiting for prince/princess to rescue me...");
-        Time.timeScale = 0;
-        Time.captureFramerate = 0;
-        yield return new WaitWhile(() => condition);
-
-        Debug.Log("Finally I have been rescued!");
-        string frame_str = "octframe_" + Time.frameCount.ToString();
-        Octane.Renderer.SaveImage(Octane.RenderPassId.RENDER_PASS_BEAUTY,
-                                 mOctaneOutputDir + "/" + frame_str + "_" + Octane.Renderer.SampleCount + "spp",
-                                 Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8,
-                                 false/*synchronous*/); // TO DO : CHECK ASYNCH Vs SYNCH
-        Time.timeScale = 1;
-        Time.captureFramerate = 10;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        StartCoroutine(WaitForOctaneRender());
         if (m_CaptureUnity)
         {
             // Capture Unity Render
@@ -134,35 +119,5 @@ public class SaveOctaneFrameSequence : MonoBehaviour
             // Capture the screenshot to the specified file.
             ScreenCapture.CaptureScreenshot(mUnityOutputDir + "/" + name_str + ".png");
         }
-
-        /////////////////////////////////////////////////////////////////////////////////////////////
-        // TESTS
-        /////////////////////////////////////////////////////////////////////////////////////////////
-#if FALSE
-        //        condition = ( (Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel == mMaxSamplesPerPixel) &&
-        (Octane.Renderer.GetLatestRenderStatistics().state == Octane.RenderState.RSTATE_FINISHED) );
-        //frame++;
-
-        //StartCoroutine(Example());
-#endif
-
-#if FALSE
-        if (Octane.Renderer.SampleCount.Equals(mMaxSamplesPerPixel))
-        {
-            Debug.Log("Octane Renderer save image !!!");
-            string frame_str = "frame_" + Time.frameCount.ToString();
-            Octane.Renderer.SaveImage(Octane.RenderPassId.RENDER_PASS_BEAUTY,
-                                  mOutputDir + "/" + frame_str + "_" + Octane.Renderer.SampleCount + "spp",
-                                  Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8,
-                                  false/*synchronous*/);
-            Time.timeScale = 1;
-        }
-
-        else if (Octane.Renderer.IsRendering || Octane.Renderer.HasFrameWaiting || Octane.Renderer.IsCompiling)
-        {
-            Debug.Log("Octane Renderer is busy ...");
-            Time.timeScale = 0;
-        }
-#endif
     }
 }
