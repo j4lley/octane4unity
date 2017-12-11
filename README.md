@@ -17,6 +17,7 @@ Set of C# scripts to use Octane renderer under Unity
 ### Car Scripts ###
 + **SynthiaCarAI.cs**: AI for cars. It needs to have a path setted. It uses a RayPoint to detect other cars. Each car owns one.
 + **CarController.cs**: it controls car physics. One for each car.
++ **StopCar.cs**
 + **WaypointTracker.cs**: Unity script to follow one path. Used by SynthiaCarAI (check with Xisco).
 
 ### Pedestrian Scripts ###
