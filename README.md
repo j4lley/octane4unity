@@ -1,5 +1,5 @@
 # octane4unity
-Set of C# scripts to use Synthia and Octane renderer under Unity
+Set of C# scripts to use Octane renderer under Unity
 
 ### Recorder Scripts ###
 
@@ -15,7 +15,7 @@ Set of C# scripts to use Synthia and Octane renderer under Unity
 + **TrafficLightPed.cs**: it manages pedestrian traffic lights. Each traffic light for pedestrians owns one.
 
 ### Car Scripts ###
-+ **SynthiaCarAI.cs**: AI for cars. It needs to have a path setted.It uses a RayPoint to detect other cars. Each car owns one.
++ **SynthiaCarAI.cs**: AI for cars. It needs to have a path setted. It uses a RayPoint to detect other cars. Each car owns one.
 + **CarController.cs**: it controls car physics. One for each car.
 + **WaypointTracker.cs**: Unity script to follow one path. Used by SynthiaCarAI (check with Xisco).
 
