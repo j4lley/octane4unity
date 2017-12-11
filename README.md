@@ -1,5 +1,5 @@
 # octane4unity
-Set of C# scripts to use Octane renderer under Unity
+Set of C# scripts to use Synthia and Octane renderer under Unity
 
 ### Recorder Scripts ###
 
