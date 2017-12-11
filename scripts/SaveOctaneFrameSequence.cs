@@ -48,6 +48,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
     //public tOctaneCaptureLayers m_OctaneCaptureLayers;
 
     public int m_CaptureFramerate = 30;
+	public int m_StartCaptureAtFrame = 0;
     public int m_VSynchCount = 0;
     public uint m_MaxSamplesPerPixel = 0; // this will automatically take later its value from Octane Kernel configuration
     public bool m_CaptureOctane = true;
@@ -61,7 +62,6 @@ public class SaveOctaneFrameSequence : MonoBehaviour
     private uint m_OctaneSavedFrames = 0;
 
     private uint mPreviousFrameOctaneSpp = 0;
-
     // Use this for initialization
     void Start()
     {
@@ -96,6 +96,10 @@ public class SaveOctaneFrameSequence : MonoBehaviour
                                             Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
                                             true, 
                                             "/../Output/Octane/SemanticSegmentation"));
+		my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_BAKING_GROUP_ID, 
+											Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
+											true, 
+											"/../Output/Octane/Instance"));
         // Add new render passes here ...
 
         //renderPass.Initialize();
@@ -145,18 +149,20 @@ public class SaveOctaneFrameSequence : MonoBehaviour
     {
         if (m_CaptureOctane)
         {
-            if (JustFinishedOctaneFrame())
+			bool bStartCapture = m_OctaneSavedFrames >= m_StartCaptureAtFrame;
+			if (JustFinishedOctaneFrame() || !bStartCapture)
             {
                 m_OctaneSavedFrames++;
-                //string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
-                for (int pass = 0; (pass < my_render_passes_array.GetLength(0)) && my_render_passes_array[pass]._capturePass; pass++)
-                {
-                    string frame_str = string.Format("{0}/octane_fr{1:D04}_pass{2}_spp{3}.png", my_render_passes_array[pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
-                    Octane.Renderer.SaveImage(/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/renderPass[pass],
-                                          frame_str,
-                                          /*Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8*/ my_render_passes_array[pass]._renderPassOutputType,
-                                          true/*asynchronous*/);
-                }
+				if (bStartCapture) 
+				{
+					//string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
+					for (int pass = 0; (pass < my_render_passes_array.GetLength (0)) && my_render_passes_array [pass]._capturePass; pass++) {
+						string frame_str = string.Format ("{0}/octane_fr{1:D04}_pass{2}_spp{3}.png", my_render_passes_array [pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
+						Octane.Renderer.SaveImage (/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/renderPass [pass],
+							frame_str,
+                                          /*Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8*/my_render_passes_array [pass]._renderPassOutputType,
+							true/*asynchronous*/);
+					}
                 // save semantic segmentation (double check it exists)
                 //if (m_CaptureSemantic)
                 //{
@@ -166,7 +172,8 @@ public class SaveOctaneFrameSequence : MonoBehaviour
                     //semantic.SaveCameraToDisk(semantic_cam, mSemanticOutputDir);
                 //}
 
-                print("Writing Octane image " + m_OctaneSavedFrames + " rendered with " + Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel + "spp.");
+                	print("Writing Octane image " + m_OctaneSavedFrames + " rendered with " + Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel + "spp.");
+				}
                 Time.captureFramerate = m_CaptureFramerate;
                 Time.timeScale = 1;
                 mCapturedFrame = true;
@@ -174,6 +181,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
             else
             {
                 Time.timeScale = 0;
+				Time.captureFramerate = 0; // jalley@note: according to Renaldas comment on synching physics and frame capture.
                 mCapturedFrame = false;
             }
             mPreviousFrameOctaneSpp = Octane.Renderer.SampleCount;
