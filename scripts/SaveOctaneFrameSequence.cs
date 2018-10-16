@@ -52,6 +52,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
     public int m_VSynchCount = 0;
     public uint m_MaxSamplesPerPixel = 0; // this will automatically take later its value from Octane Kernel configuration
     public bool m_CaptureOctane = true;
+    public bool m_CaptureOpacity = false;
     //public bool m_CaptureUnity = false;
     //public bool m_CaptureSemantic = false;
 
@@ -88,18 +89,26 @@ public class SaveOctaneFrameSequence : MonoBehaviour
                                             Octane.ImageSaveType.IMAGE_SAVE_TYPE_EXR, 
                                             true, 
                                             "/../Output/Octane/Beauty"));
-        my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_Z_DEPTH, 
-                                            Octane.ImageSaveType.IMAGE_SAVE_TYPE_EXR, 
-                                            true, 
-                                            "/../Output/Octane/Depth"));
-        my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_RENDER_LAYER_ID, 
-                                            Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
-                                            true, 
-                                            "/../Output/Octane/SemanticSegmentation"));
-		my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_BAKING_GROUP_ID, 
-											Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
-											true, 
-											"/../Output/Octane/Instance"));
+        if (m_CaptureOpacity)
+        {
+            my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_OPACITY,
+                                                Octane.ImageSaveType.IMAGE_SAVE_TYPE_EXR,
+                                                true,
+                                                "/../Output/Octane/Opacity"));
+        }
+        //my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_Z_DEPTH, 
+        //                                    Octane.ImageSaveType.IMAGE_SAVE_TYPE_EXR, 
+        //                                    true, 
+        //                                    "/../Output/Octane/Depth"));
+        //my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_RENDER_LAYER_ID, 
+        //                                    Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
+        //                                    true, 
+        //                                    "/../Output/Octane/SemanticSegmentation"));
+        //my_render_passes.Add(new RenderPass(Octane.RenderPassId.RENDER_PASS_BAKING_GROUP_ID, 
+        //									Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8, 
+        //									true, 
+        //									"/../Output/Octane/Instance"));
+
         // Add new render passes here ...
 
         //renderPass.Initialize();
@@ -157,12 +166,14 @@ public class SaveOctaneFrameSequence : MonoBehaviour
 				{
 					//string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
 					for (int pass = 0; (pass < my_render_passes_array.GetLength (0)) && my_render_passes_array [pass]._capturePass; pass++) {
-						string frame_str = string.Format ("{0}/octane_pass{2}_spp{3}_fr{1:D04}.png", my_render_passes_array [pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
+						string frame_str = string.Format ("{0}/octane_pass{2}_spp{3}_fr{1:D04}.exr", my_render_passes_array[pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
 						Octane.Renderer.SaveImage (/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/renderPass [pass],
 							frame_str,
                                           /*Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8*/my_render_passes_array [pass]._renderPassOutputType,
 							true/*asynchronous*/);
-					}
+                        print("Saving pass: " + my_render_passes_array[pass]._renderPass);
+
+                    }
                 // save semantic segmentation (double check it exists)
                 //if (m_CaptureSemantic)
                 //{
