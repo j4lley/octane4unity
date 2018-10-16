@@ -73,7 +73,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
         //mSemanticOutputDir = Application.dataPath + "/../Output/SemanticSegmentation";
         //Directory.CreateDirectory(mSemanticOutputDir);
 
-        m_MaxSamplesPerPixel = Octane.Renderer.GetLatestRenderStatistics().maxSamplesPerPixel;
+        m_MaxSamplesPerPixel = Octane.Renderer.GetLatestRenderStatistics(0/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/).maxSamplesPerPixel;
         // Configure framerate specifications
         QualitySettings.vSyncCount = m_VSynchCount;
         Time.captureFramerate = m_CaptureFramerate;
@@ -141,7 +141,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
             (mCapturedFrame == false) && /* frame was not just written to disk before */
             !Octane.Renderer.IsCompiling && /* Octane should not be currently compiling the current scene frame */
             (mPreviousFrameOctaneSpp != Octane.Renderer.SampleCount) && /* we use this trick to avoid multiple images to be written with the same frame */
-            Octane.Renderer.SampleCount.Equals(Octane.Renderer.GetLatestRenderStatistics().maxSamplesPerPixel) /* ensure desired spp has been achieved */
+            Octane.Renderer.SampleCount.Equals(Octane.Renderer.GetLatestRenderStatistics(0).maxSamplesPerPixel) /* ensure desired spp has been achieved */
             );
     }
 
@@ -157,7 +157,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
 				{
 					//string frame_str = "octane_fr_" + m_OctaneSavedFrames/*+ "_realfr_" + Time.frameCount.ToString()*/;
 					for (int pass = 0; (pass < my_render_passes_array.GetLength (0)) && my_render_passes_array [pass]._capturePass; pass++) {
-						string frame_str = string.Format ("{0}/octane_fr{1:D04}_pass{2}_spp{3}.png", my_render_passes_array [pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
+						string frame_str = string.Format ("{0}/octane_pass{2}_spp{3}_fr{1:D04}.png", my_render_passes_array [pass]._outputDir, m_OctaneSavedFrames, pass, Octane.Renderer.SampleCount);
 						Octane.Renderer.SaveImage (/*Octane.RenderPassId.RENDER_PASS_BEAUTY*/renderPass [pass],
 							frame_str,
                                           /*Octane.ImageSaveType.IMAGE_SAVE_TYPE_PNG8*/my_render_passes_array [pass]._renderPassOutputType,
@@ -172,7 +172,7 @@ public class SaveOctaneFrameSequence : MonoBehaviour
                     //semantic.SaveCameraToDisk(semantic_cam, mSemanticOutputDir);
                 //}
 
-                	print("Writing Octane image " + m_OctaneSavedFrames + " rendered with " + Octane.Renderer.GetLatestRenderStatistics().samplesPerPixel + "spp.");
+                	print("Writing Octane image " + m_OctaneSavedFrames + " rendered with " + Octane.Renderer.GetLatestRenderStatistics(0).samplesPerPixel + "spp.");
 				}
                 Time.captureFramerate = m_CaptureFramerate;
                 Time.timeScale = 1;
